@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en-IN">
+<head>
+    <title>Speech Recognition</title>
+    <style>
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background-color: #f1f1f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #ddd;
+        }
+
+        .button:active {
+            background-color: #ccc;
+        }
+
+        .button svg {
+            fill: #444;
+        }
+
+        .button:hover svg {
+            fill: #000;
+        }
+
+        .button:active svg {
+            fill: #000;
+        }
+
+        .button:focus {
+            outline: none;
+        }
+
+        .button:focus svg {
+            fill: #000;
+        }
+
+        .button:focus-visible {
+            outline: 2px solid #444;
+        }
+
+        .button:focus-visible svg {
+            fill: #000;
+        }
+
+        .button:disabled {
+            background-color: #f1f1f1;
+            cursor: not-allowed;
+        }
+
+        .button:disabled svg {
+            fill: #ccc;
+        }
+
+        .button:disabled:hover svg {
+            fill: #ccc;
+        }
+
+        .button:disabled:active svg {
+            fill: #ccc;
+        }
+
+        .button:disabled:focus svg {
+            fill: #ccc;
+        }
+
+        .button:disabled:focus-visible svg {
+            fill: #ccc;
+        }
+
+        .button:disabled:focus-visible {
+            outline: 2px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="button" id="microphoneButton">
+            <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24">
+                <path d="M12 2c-4.97 0-9 4.03-9 9v7c0 .55.45 1 1 1h4v-2h-3v-6c0-3.87 3.13-7 7-7s7 3.13 7 7v6h-3v2h4c.55 0 1-.45 1-1v-7c0-4.97-4.03-9-9-9zm-1 16h-2v-2h2v2zm4 0h-2v-2h2v2zm2-4h-8v-2h8v2zm0-4h-8v-2h8v2z"/>
+            </svg>
+        </div>
+    </div>
+
+    <script>
+        let voices = null;
+        function setSpeech() {
+            return new Promise(
+                function (resolve, reject) {
+                    let synth = window.speechSynthesis;
+                    let id;
+
+                    id = setInterval(() => {
+                        if (synth.getVoices().length !== 0) {
+                            resolve(synth.getVoices());
+                            clearInterval(id);
+                        }
+                    }, 10);
+                }
+            )
+        }
+
+        let s = setSpeech();
+        s.then((v) => {
+            voices = v;
+            console.log(voices);
+            setVoice("Microsoft Heera - English (India)")
+        });
+        function setVoice(name) {
+            for (let i = 0; i < voices.length; i++) {
+                if (voices[i].name === name) {
+                    voice = voices[i];
+                    break;
+                }
+            }
+        }
+        let recognitionStarted = false;
+        const microphoneButton = document.getElementById('microphoneButton');
+        const recognition = new webkitSpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'en-IN'
+
+        microphoneButton.addEventListener('click', () => {
+            if (recognitionStarted) {
+                recognition.stop();
+                recognitionStarted = false;
+                return;
+            }
+            recognition.start();
+            recognitionStarted = true;
+        });
+
+        function say (text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = voice || voices[0];
+            utterance.pitch = window.pitch || 1;
+            utterance.rate = window.rate || 1;
+            speechSynthesis.speak(utterance);
+        }
+
+        recognition.onresult = (event) => {
+            const speechToText = event.results[event.results.length - 1][0].transcript;
+            if (speechToText.includes('assistant')) {
+                // Convert speechToText to text and pass it to the /speech API using fetch
+                fetch('/speech', {
+                    method: 'POST',
+                    body: JSON.stringify({ text: speechToText }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Handle the response from the /speech API
+                    console.log(data);
+                    const speech = data.speech;
+                    if (speech) {
+                        const utterance = new SpeechSynthesisUtterance(speech);
+                        utterance.voice = voice;
+                        utterance.pitch = 5
+                        utterance.rate = 1.4
+                        speechSynthesis.speak(utterance);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        };
+    </script>
+</body>
+</html>

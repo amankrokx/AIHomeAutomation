@@ -1,0 +1,15 @@
+{
+    "userLocation": "bedroom",
+    "timerInterrupt": "false",
+    "devices": [
+        { "room": "bedroom", "device": "lamp1", "value": "on" },
+        { "room": "bedroom", "device": "lamp2", "value": "off" },
+        { "room": "bedroom", "device": "fan", "value": "on" },
+        { "room": "bedroom", "device": "ac", "value": "off" },
+        { "room": "bedroom", "device": "tv", "value": "on" }
+    ],
+    "timers": [
+        { "timer": "set", "id": "tvTimer1", "duration": "1200", "description": "Turn tv off after 20 mins" },
+        { "timer": "set", "id": "acTimer1", "duration": "0", "description": "Timer to turn off AC after 10 mins as orderd by user" }
+    ]
+}
