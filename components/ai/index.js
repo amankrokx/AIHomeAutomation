@@ -2,7 +2,7 @@ import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/ge
 import chatHistory from "./chatHistory.js"
 
 const MODEL_NAME = "gemini-pro"
-const API_KEY = "AIzaSyBeUvLmsrqOX73fPDyf5tdSopqisVHrtcQ"
+const API_KEY = process.env.GOOGLE_API_KEY
 
 const genAI = new GoogleGenerativeAI(API_KEY)
 const model = genAI.getGenerativeModel({ model: MODEL_NAME })

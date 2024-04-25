@@ -1,6 +1,5 @@
 // node --version # Should be >= 18
 // npm install @google/generative-ai
-
 import { connect } from "mqtt"
 import ai from "./components/ai/index.js"
 import ask from "./components/ask/index.js"
@@ -15,10 +14,6 @@ const database = {
         timerInterrupt: "false",
         devices: [
             { room: "bathroom", device: "lamp1", value: "on" },
-            { room: "bathroom", device: "lamp2", value: "off" },
-            { room: "bathroom", device: "fan", value: "off" },
-            { room: "bathroom", device: "ac", value: "off" },
-            { room: "bathroom", device: "geyser", value: "off" },
         ],
         timers: [],
     },
@@ -36,7 +31,15 @@ const database = {
 }
 
 console.log("MQTT connecting")
-const client = connect("mqtt://broker.emqx.io:1883", {
+if (!process.env.MQTT_ADDRESS) {
+    console.error("MQTT_ADDRESS not set in environment")
+    process.exit(1)
+}
+
+const client = connect(`mqtts://${process.env.MQTT_ADDRESS}:8883`, {
+    // TODO: Fix connection later
+    username: "amankrokx",
+    clientId: "amankrokx-ai",
     protocolId: "MQTT",
     protocolVersion: 5,
 })
@@ -88,15 +91,21 @@ client.on("connect", async () => {
     }
 })
 
-async function prompt (question) {
-    const location = "bedroom"
+/**
+ * 
+ * @param {String} question 
+ * @param {"bedroom" | "bathroom"} location 
+ * @returns {Promise<String>}
+ */
+async function prompt (question, location = "bedroom") {
     const newDataReturned = await getDeviceStateVariables(location)
     if (!newDataReturned) {
         console.log("Could not get latest data\n")
     } else console.log(database[location])
     const input = ["", ""]
     input[0] = `input: ${question}`
-    input[1] = `input 2: ${newDataReturned ? JSON.stringify(database[location]) : undefined}`
+    // added || true for debugging
+    input[1] = `input 2: ${(newDataReturned || true) ? JSON.stringify(database[location]) : undefined}`
     const result = await ai.sendMessage(input)
     const response = result.response
     const text = response.text()
