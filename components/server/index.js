@@ -1,5 +1,6 @@
 import express from "express"
 // get _dirname
+import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -18,6 +19,9 @@ let callback = async () => {
 }
 
 app.use(express.json())
+app.use(cors({
+    origin: "*"
+}))
 
 /**
  * 
@@ -27,7 +31,7 @@ app.post("/speech", async (req, res) => {
     const data = req.body.text
     const location = req.body.location || "bedroom"
     // data will start with "assistant" so split it
-    const text = data.split("assistant")[1]
+    const text = data //.split("assistant")[1]
     console.log(text)
     const speech = await callback(text, location)
     res.send({ speech })

@@ -40,7 +40,7 @@ const Listen = ({ clickEvent }) => {
             const mediaRecorder = new MediaRecorder(stream)
 
             mediaRecorder.addEventListener("start", event => {
-                console.log(event.data)
+                console.log("Visualisations started")
             })
         })()
     }, [])

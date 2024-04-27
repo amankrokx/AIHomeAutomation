@@ -12,7 +12,7 @@ const Home = () => {
     const [clickEvent, setClickEvent] = useState(0)
 
     useEffect(() => {
-        console.log(user)
+        // console.log(user)
     }, [user])
 
     return (

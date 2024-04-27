@@ -15,7 +15,7 @@ const Login = () => {
 
     useEffect(() => {
         if (authContext.user) {
-            console.log(authContext.user)
+            // console.log(authContext.user)
             if (window.location.pathname === "/login")
                 window.location.pathname = "/"
         }
