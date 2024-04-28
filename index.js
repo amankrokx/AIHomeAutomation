@@ -3,32 +3,11 @@
 import { connect } from "mqtt"
 import ai from "./components/ai/index.js"
 import ask from "./components/ask/index.js"
+import database from "./components/database/index.js"
 import { setCallback } from "./components/server/index.js"
-
+import { handleTimer } from "./components/timer/index.js"
 
 let dataArrived = false
-
-const database = {
-    bathroom: {
-        userLocation: "bathroom",
-        timerInterrupt: "false",
-        devices: [
-            { room: "bathroom", device: "lamp1", value: "on" },
-        ],
-        timers: [],
-    },
-    bedroom: {
-        userLocation: "bedroom",
-        timerInterrupt: "false",
-        devices: [
-            { room: "bedroom", device: "lamp1", value: "on" },
-            { room: "bedroom", device: "lamp2", value: "off" },
-            { room: "bedroom", device: "fan", value: "off" },
-            { room: "bedroom", device: "ac", value: "off" },
-        ],
-        timers: [],
-    }
-}
 
 console.log("MQTT connecting")
 if (!process.env.MQTT_ADDRESS) {
@@ -44,9 +23,13 @@ const client = connect(`mqtts://${process.env.MQTT_ADDRESS}:8883`, {
     protocolVersion: 5,
 })
 
-Object.keys(database).forEach((location) => {
+Object.keys(database).forEach(location => {
     console.log("Subscribing to topic", `/amankrokx-esp/${location}/pub`)
     client.subscribe(`/amankrokx-esp/${location}/pub`)
+})
+
+client.on("error", error => {
+    console.error("MQTT error", error)
 })
 
 client.on("message", (topic, message) => {
@@ -57,10 +40,11 @@ client.on("message", (topic, message) => {
         const location = topic.split("/")[2]
         dataArrived = true
         const returnedData = data.split("outData:")[1]
-        returnedData.split("&").map((item) => {
+        returnedData.split("&").map(item => {
             // split by = and then update the database
             const [key, value] = item.split("=")
-            database[location].devices.filter((device) => device.device === key)[0].value = (value === "1" ? "on" : "off")
+            database[location].devices.filter(device => device.device === key)[0].value = value === "1" ? "on" : "off"
+            database[location].active = true
         })
     }
     // else console.log("MQTT message not recognized")
@@ -68,16 +52,16 @@ client.on("message", (topic, message) => {
 
 /**
  * @description Waits at max 2 seconds to check if latest data has arrived for the location or not
- * @param {string} location 
+ * @param {string} location
  * @returns {Promise<Boolean>}
  */
-const getDeviceStateVariables = async (location) => {
+const getDeviceStateVariables = async location => {
     dataArrived = false
     client.publish(`/amankrokx-esp/${location}/sub`, "getState")
     // now wait for 2 seconds, keep checking if data has arrived or not
     let count = 0
     while (!dataArrived && count < 20) {
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await new Promise(resolve => setTimeout(resolve, 100))
         count++
     }
     return dataArrived
@@ -92,12 +76,12 @@ client.on("connect", async () => {
 })
 
 /**
- * 
- * @param {String} question 
- * @param {"bedroom" | "bathroom"} location 
+ *
+ * @param {String} question
+ * @param {"bedroom" | "bathroom"} location
  * @returns {Promise<String>}
  */
-async function prompt (question, location = "bedroom") {
+async function prompt(question, location = "bedroom") {
     const newDataReturned = await getDeviceStateVariables(location)
     if (!newDataReturned) {
         console.log("Could not get latest data\n")
@@ -105,10 +89,13 @@ async function prompt (question, location = "bedroom") {
     const input = ["", ""]
     input[0] = `input: ${question}`
     // added || true for debugging
-    input[1] = `input 2: ${(newDataReturned || true) ? JSON.stringify(database[location]) : undefined}`
+    input[1] = `input 2: ${newDataReturned || true ? JSON.stringify(database[location]) : undefined}`
+    console.log("Sending state ------------------", database[location])
     const result = await ai.sendMessage(input)
     const response = result.response
     const text = response.text()
+    // after resopnse, make sure timerInterrupt is false
+    database[location].timerInterrupt = false
     // console.log(text)
     // split text into two parts one starts with "output: "and other with "output 2: "
     const textParts = text.split("output 2: ")
@@ -120,7 +107,13 @@ async function prompt (question, location = "bedroom") {
     // json is an array
     /*
     [    { "room": "bathroom", "device": "lamp2", "value": "on" }]
-
+    or
+    [{
+        timer: 'set',
+        id: 'acTimer1',
+        duration: '120',
+        description: 'Turn off AC after 2 minutes'
+    }]
     on means 1, use device name = 1
     if room is bathroom then only
     */
@@ -128,13 +121,16 @@ async function prompt (question, location = "bedroom") {
     let arr = []
     for (const item of json) {
         if (item.room === location) {
-            arr.push(`${item.device}=${item.value === 'on' ? 1 : 0}`)
+            arr.push(`${item.device}=${item.value === "on" ? 1 : 0}`)
+        }
+        if (item.timer) {
+            // timer is set or 
+            handleTimer(item, location)
         }
     }
     string = arr.join("&")
     // publish to the topic
-    if (string.length !== 0)
-        client.publish(`/amankrokx-esp/${location}/sub`, string)
+    if (string.length !== 0) client.publish(`/amankrokx-esp/${location}/sub`, string)
 
     return output
 }

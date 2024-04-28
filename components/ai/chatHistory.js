@@ -84,6 +84,17 @@ const chatHistory = [
     },
     {
         role: "user",
+        parts: [
+            `input: null`,
+            `input 2: {"userLocation":"bedroom","timerInterrupt":true,"devices":[{"room":"bedroom","device":"lamp1","value":"off"},{"room":"bedroom","device":"lamp2","value":"off"},{"room":"bedroom","device":"fan","value":"on"},{"room":"bedroom","device":"ac","value":"off"}],"timers":[{"timer":"set","id":"fanTimer","duration":0,"description":"Turn off fan in 10 seconds"}],"active":true}`,
+        ],
+    },
+    {
+        role: "model",
+        parts: [`output: It's time to turn off the fan.`, `output 2: [{"room":"bedroom","device":"fan","value":"off"},{"timer":"remove","id":"fanTimer"}]`],
+    },
+    {
+        role: "user",
         parts: [`input: it's dark in here`, `input 2: {"userLocation":"bathroom","timerInterrupt":"false","devices":[{"room":"bathroom","device":"lamp1","value":"on"}],"timers":[]}`],
     },
     {

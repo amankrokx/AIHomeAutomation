@@ -3,6 +3,7 @@ import express from "express"
 import cors from "cors"
 import path from "path"
 import { fileURLToPath } from "url"
+import database from "../database/index.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,7 +38,20 @@ app.post("/speech", async (req, res) => {
     res.send({ speech })
 })
 
+app.get("/rooms", (req, res) => {
+    res.send(database)
+})
+
+// app.use(express.static(path.join(__dirname, "client")))
+// react app in ./client/index.html
+// re route all requests to index.html
 app.use(express.static(path.join(__dirname, "client")))
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "client", "index.html"))
+})
+
+
+
 app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
 })
@@ -49,5 +63,5 @@ app.listen(port, () => {
 const setCallback = (cb) => {
     callback = cb
 }
-export { setCallback }
+export { callback as prompt, setCallback }
 

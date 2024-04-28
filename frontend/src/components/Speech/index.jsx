@@ -1,7 +1,16 @@
 import { Box, Typography } from "@mui/material"
+import { enqueueSnackbar } from "notistack"
 import { useEffect, useState } from "react"
-import sleep from "../../utils/sleep.js"
+import currentRoom from "../Room/currentRoom.js"
 import recognition, { speak } from "./index.js"
+
+function tryCatchEasy(func) {
+    try {
+        return func()
+    } catch (error) {
+        console.error(error)
+    }
+}
 
 const niceEffect = {
     // nice gradient effect, activated when loading response
@@ -37,7 +46,6 @@ const Speech = ({ clickEvent, setClickEvent, location = "bedroom" }) => {
     const [finalTimer, setFinalTimer] = useState(0)
     const [responseText, setResponseText] = useState("")
     const [loadingResponse, setLoadingResponse] = useState(false)
-    
 
     const setResponseTextWordByWord = async (sentence, duration) => {
         // the total speak time for sentence is duration in miliseconds
@@ -63,22 +71,27 @@ const Speech = ({ clickEvent, setClickEvent, location = "bedroom" }) => {
         console.log("Fetching result called 🥲")
         // stop listening to avoid conflict
         setLoadingResponse(true)
-        recognition.stop() // stop listening
+        tryCatchEasy(recognition.stop()) // stop listening
 
-        console.warn("Fetching result for: ", sentence)
-        // const response = await fetch("http://localhost:3000/speech", {
-        //     mode: "cors",
-        //     method: "POST",
-        //     headers: {
-        //         "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify({ text: sentence, location }),
-        // })
-        // const data = await response.json()
-        await sleep(2000)
-        const data = {
-            speech: Array.from({ length: 1 }, () => sentence).join(" ")
+        const insideRoom = currentRoom.getRoom()
+        if (!insideRoom || !clickEvent) {
+            enqueueSnackbar("No room active!", { variant: "error" })
+            return
         }
+        console.warn("Fetching result for: ", sentence)
+        const response = await fetch("http://localhost:3000/speech", {
+            mode: "cors",
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: sentence, location: insideRoom }),
+        })
+        const data = await response.json()
+        // await sleep(2000)
+        // const data = {
+        //     speech: Array.from({ length: 1 }, () => sentence).join(" ")
+        // }
         setLoadingResponse(false)
         // setResponseText(data.speech + " ")
         // getDurationOfSpeech(data.speech).then(duration => {
@@ -89,11 +102,16 @@ const Speech = ({ clickEvent, setClickEvent, location = "bedroom" }) => {
         // setResponseTextWordByWord(data.speech, approximateDuration)
         setResponseText(data.speech)
         document.getElementById("ai-response-text").scrollBy(0, 10000)
-        recognition.stop()
-        speak(data.speech).finally(() => {
-            console.log("Listening because Speaking Done")
-            recognition.start()
-        })
+        tryCatchEasy(recognition.stop())
+        speak(data.speech)
+            .catch(error => {
+                enqueueSnackbar("Error Speaking: " + error, { variant: "error" })
+                console.error("Error Speaking: ", error)
+            })
+            .finally(() => {
+                console.log("Listening because Speaking Done")
+                tryCatchEasy(recognition.start())
+            })
         // console.log(data)
     }
 
@@ -149,11 +167,11 @@ const Speech = ({ clickEvent, setClickEvent, location = "bedroom" }) => {
         }
         if (!clickEvent) return
         if (isListening) {
-            recognition.stop()
+            tryCatchEasy(recognition.stop())
             setIsListening(false)
         } else {
             console.log("Listening Because: ", clickEvent, isListening, loadingResponse, currentText, responseText)
-            recognition.start()
+            tryCatchEasy(recognition.start())
             setIsListening(true)
         }
     }, [clickEvent])
